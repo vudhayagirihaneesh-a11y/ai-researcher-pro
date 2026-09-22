@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model KnowledgeChunk {
+  id        Int      @id @default(autoincrement())
+  docId     String   @unique
+  domain    String
+  title     String
+  content   String
+  keywords  String   @default("") // comma-separated
+  source    String   @default("") // provenance label
+  origin    String   @default("seed") // seed | web (auto-learned)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([domain])
+  @@index([origin])
+}
+
+model ResearchSession {
+  id          String        @id @default(cuid())
+  topic       String
+  kind        String        @default("research") // research | chat
+  mode        String        @default("essay") // essay | photo-essay | chat
+  depth       String        @default("fast") // fast | medium | max (legacy: quick/standard/deep)
+  status      String        @default("running") // running | done | error
+  title       String?
+  markdown    String?
+  sourcesJson String?
+  statsJson   String?
+  notes       String?
+  wordCount   Int           @default(0)
+  imageCount  Int           @default(0)
+  error       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  images      EssayImage[]
+  messages    ChatMessage[]
+}
+
+model EssayImage {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  fileName  String
+  url       String
+  remoteUrl String?
+  caption   String
+  credit    String          @default("AI-generated")
+  prompt    String?
+  order     Int             @default(0)
+  createdAt DateTime        @default(now())
+
+  @@index([sessionId])
+}
+
+model ChatMessage {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  createdAt DateTime        @default(now())
+
+  @@index([sessionId])
+}
