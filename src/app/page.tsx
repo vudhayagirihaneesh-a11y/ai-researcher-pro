@@ -490,6 +490,7 @@ export default function Home() {
       // only if it exists — the server handles research/chat accordingly.
 
       try {
+        let targetStreamId = localStreamId;
         await streamSSE(
           "/api/chat",
           {
@@ -499,10 +500,16 @@ export default function Home() {
             history,
           },
           controller.signal,
-          (raw) => handleEvent(localStreamId, raw)
+          (raw) => {
+            handleEvent(targetStreamId, raw);
+            const ev = raw as SSEEvent;
+            if (ev.type === "session" && ev.sessionId) {
+              targetStreamId = ev.sessionId;
+            }
+          }
         );
         // Stream ended — settle any still-pending message.
-        updateMessage(localStreamId, (msg) => {
+        updateMessage(targetStreamId, (msg) => {
           if (msg.role !== "assistant") return msg;
           if (msg.kind === "pending") {
             return {
@@ -527,7 +534,7 @@ export default function Home() {
       } catch (err) {
         if (isAbortError(err)) {
           // User pressed stop.
-          updateMessage(localStreamId, (msg) => {
+          updateMessage(targetStreamId, (msg) => {
             if (msg.role !== "assistant") return msg;
             if (msg.kind === "research" && msg.research) {
               return {
@@ -544,7 +551,7 @@ export default function Home() {
         } else {
           const message =
             err instanceof Error ? err.message : "Unknown error";
-          updateMessage(localStreamId, (msg) => {
+          updateMessage(targetStreamId, (msg) => {
             if (msg.role !== "assistant") return msg;
             if (msg.kind === "research" && msg.research) {
               return {
@@ -557,8 +564,8 @@ export default function Home() {
           toast.error("Request failed", { description: message });
         }
       } finally {
-        if (abortRefs.current[localStreamId] === controller) delete abortRefs.current[localStreamId];
-        setSessionStreaming(prev => ({...prev, [localStreamId]: false}));
+        if (abortRefs.current[targetStreamId] === controller) delete abortRefs.current[targetStreamId];
+        setSessionStreaming(prev => ({...prev, [targetStreamId]: false}));
         void refreshSessions();
       }
     },

@@ -215,7 +215,7 @@ export function ResearchBlock({
       )}
 
       {/* ── Result tabs ───────────────────────────────────────────────────── */}
-      {(run.markdown.trim().length > 0 || run.images.length > 0) && (
+      {(run.markdown.trim().length > 0 || run.images.length > 0 || run.status === "running") && (
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-stone-700 dark:bg-stone-900">
           <div className="flex flex-wrap items-center gap-1 border-b border-gray-100 px-2 pt-2 dark:border-stone-800">
             {(
