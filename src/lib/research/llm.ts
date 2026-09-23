@@ -28,7 +28,10 @@ export async function chatComplete(
       const baseUrl = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
       const response = await fetch(`${baseUrl}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "1"
+        },
         body: JSON.stringify({
           model: "qwen3:8b",
           messages: messages.map(m => ({ role: m.role, content: m.content })),
