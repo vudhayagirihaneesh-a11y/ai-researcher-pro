@@ -18,7 +18,7 @@ import { SPEED_PRESETS } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 1800;
+export const maxDuration = 300;
 
 const ESSAY_CHAT_SYSTEM = `You are the research assistant of AI Researcher Pro. You answer questions about the user's completed research essay and its sources. Be substantive: give thorough, well-reasoned answers grounded in the essay, the sources, and the curated knowledge-base excerpts provided. Use markdown when helpful (headings, bold, lists). Cite web sources as [S1], [S2] and knowledge-base passages as [K1], [K2] when drawing on them. Never mention being an AI. Never give one-line answers to substantive questions — develop your reasoning.`;
 
