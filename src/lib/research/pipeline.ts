@@ -11,7 +11,7 @@ import {
   buildResearchContext,
   type ReadPage,
 } from "./search";
-import { generateImage, findWebImages } from "./images";
+import { findWebImages, findWebImagesMultiQuery } from "./images";
 import {
   searchKnowledge,
   learnFromPages,
@@ -668,20 +668,22 @@ export async function executePipeline(
     const context = buildResearchContext(pages);
     const sources: SourceDTO[] = [...kbSources, ...webSources];
 
-    // ── 4. IMAGES ───────────────────────────────────────────────────────────
+    // ── 4. IMAGES (real web photos only — no AI generation) ──────────────────
     const images: EssayImageDTO[] = [];
     const wantImages = Math.min(photoCount, preset.maxImages);
     let enrichedImagePlan: ImagePlanItem[] = plan.imagePlan;
     if (wantImages > 0) {
+      q.push({
+        type: "stage",
+        stage: "images",
+        message: `Finding ${wantImages} real photographs from the web …`,
+      });
+
       if (isPhotoEssay) {
-        q.push({
-          type: "stage",
-          stage: "images",
-          message: `Producing ${wantImages} documentary photographs for the photo essay …`,
-        });
+        // Photo essay: use the image plan captions as targeted search queries
         q.push({
           type: "stage_detail",
-          message: "Briefing the photo desk — crafting shot list for a coherent visual narrative …",
+          message: "Crafting targeted search queries for each photo scene …",
         });
         const imagePlanItems = await enrichImagePrompts(
           req.topic,
@@ -690,76 +692,64 @@ export async function executePipeline(
           wantImages
         );
         enrichedImagePlan = imagePlanItems;
-        for (let i = 0; i < wantImages; i++) {
-          const planItem: ImagePlanItem =
-            imagePlanItems[i] ?? {
-              prompt: `Photorealistic documentary photograph ${i + 1} of ${req.topic}: students in Delhi, placards, dramatic monsoon light, photojournalism`,
-              caption: `Frame ${i + 1}`,
-            };
-          q.push({
-            type: "image_start",
-            index: i + 1,
-            total: wantImages,
-            prompt: planItem.prompt,
-          });
-          try {
-            const img = await generateImage(
-              planItem.prompt,
-              planItem.caption,
-              i
-            );
-            images.push(img);
-            q.push({ type: "image_done", image: img });
-          } catch (e: any) {
-            q.push({
-              type: "stage_detail",
-              message: `Image ${i + 1} failed (${e.message}) — continuing.`,
-            });
-          }
-        }
-      } else {
-        q.push({
-          type: "stage",
-          stage: "images",
-          message: `Finding and mirroring ${wantImages} real photographs from the web …`,
-        });
+
+        // Build per-scene search queries from the enriched captions
+        const searchQueries = imagePlanItems.slice(0, wantImages).map((item, i) => ({
+          query: `${req.topic} ${item.caption || item.prompt}`.slice(0, 200),
+          caption: item.caption || `Frame ${i + 1}`,
+        }));
+
         q.push({
           type: "image_start",
           index: 1,
           total: wantImages,
           prompt: req.topic,
         });
-        let found = await findWebImages(req.topic, wantImages);
+
+        const found = await findWebImagesMultiQuery(searchQueries);
         for (const img of found) {
           images.push(img);
           q.push({ type: "image_done", image: img });
         }
+
+        // If some scenes didn't find images, try broader search queries
         if (found.length < wantImages) {
           const missing = wantImages - found.length;
           q.push({
             type: "stage_detail",
-            message: `Only ${found.length} real photos found — generating ${missing} illustrations to fill the gap.`,
+            message: `Found ${found.length}/${wantImages} scene photos — searching broader terms for ${missing} more …`,
           });
-          for (let i = 0; i < missing; i++) {
-            q.push({
-              type: "image_start",
-              index: found.length + i + 1,
-              total: wantImages,
-              prompt: req.topic,
-            });
-            try {
-              const img = await generateImage(
-                `${req.topic} — editorial illustration, documentary style, high detail`,
-                `Illustration — ${req.topic}`,
-                found.length + i
-              );
-              images.push(img);
-              q.push({ type: "image_done", image: img });
-            } catch {
-              /* non-fatal */
-            }
+          const broader = await findWebImages(req.topic, missing, found.length);
+          for (const img of broader) {
+            images.push(img);
+            q.push({ type: "image_done", image: img });
           }
         }
+      } else {
+        // Regular essay: search directly for the topic
+        q.push({
+          type: "image_start",
+          index: 1,
+          total: wantImages,
+          prompt: req.topic,
+        });
+        const found = await findWebImages(req.topic, wantImages);
+        for (const img of found) {
+          images.push(img);
+          q.push({ type: "image_done", image: img });
+        }
+      }
+
+      if (images.length === 0) {
+        q.push({
+          type: "stage_detail",
+          message: "No suitable real photos found for this topic — proceeding without images.",
+        });
+      } else {
+        q.push({
+          type: "stage_detail",
+          message: `Collected ${images.length} real photographs from the web.`,
+        });
       }
     }
 
