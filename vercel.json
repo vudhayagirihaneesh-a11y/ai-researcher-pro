@@ -1,13 +1,13 @@
 {
   "build": {
     "env": {
-      "DATABASE_URL": "postgresql://postgres.woaalsoozbxivjoxyffw:%40vudhayagirihaneesh01@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
+      "DATABASE_URL": "postgresql://postgres.woaalsoozbxivjoxyffw:%40vudhayahaneesh01@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
       "DIRECT_URL": "postgresql://postgres:%40vudhayahaneesh01@db.woaalsoozbxivjoxyffw.supabase.co:5432/postgres",
       "OLLAMA_URL": "https://kerchief-dinner-pulse.ngrok-free.dev"
     }
   },
   "env": {
-    "DATABASE_URL": "postgresql://postgres.woaalsoozbxivjoxyffw:%40vudhayagirihaneesh01@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
+    "DATABASE_URL": "postgresql://postgres.woaalsoozbxivjoxyffw:%40vudhayahaneesh01@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
     "DIRECT_URL": "postgresql://postgres:%40vudhayahaneesh01@db.woaalsoozbxivjoxyffw.supabase.co:5432/postgres",
     "OLLAMA_URL": "https://kerchief-dinner-pulse.ngrok-free.dev"
   }

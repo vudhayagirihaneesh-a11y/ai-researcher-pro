@@ -167,6 +167,12 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "message is required" }, { status: 400 });
   }
 
+  let visitorId = req.cookies.get("visitor_id")?.value;
+  const isNewVisitor = !visitorId;
+  if (!visitorId) {
+    visitorId = "v_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+
   const speed: SpeedMode =
     body.speed && body.speed in SPEED_PRESETS ? body.speed : "fast";
   const history = Array.isArray(body.history) ? body.history : [];
@@ -287,6 +293,7 @@ export async function POST(req: NextRequest) {
               depth: researchReq.speed,
               status: "running",
               title: message.slice(0, 90),
+              browserId: visitorId,
             },
           });
           currentSessionId = session.id;
@@ -303,6 +310,7 @@ export async function POST(req: NextRequest) {
               depth: speed,
               status: "done",
               title: message.slice(0, 90),
+              browserId: visitorId,
             },
           });
           currentSessionId = chatSession.id;
@@ -340,14 +348,17 @@ export async function POST(req: NextRequest) {
     }
   })();
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
+  const headers = new Headers({
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
   });
+  if (isNewVisitor) {
+    headers.set("Set-Cookie", `visitor_id=${visitorId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000`);
+  }
+
+  return new Response(stream, { headers });
 }
 
 export async function GET() {

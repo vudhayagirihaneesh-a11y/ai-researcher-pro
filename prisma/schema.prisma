@@ -39,6 +39,7 @@ model ResearchSession {
   wordCount   Int           @default(0)
   imageCount  Int           @default(0)
   error       String?
+  browserId   String?       @default("anonymous")
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   messages    ChatMessage[]
