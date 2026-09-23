@@ -7,7 +7,7 @@ reading → images → section-by-section writing with length enforcement →
 finalized essay with references).
 
 Built with **Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 ·
-shadcn/ui · Prisma (SQLite) · z-ai-web-dev-sdk**.
+shadcn/ui · Prisma**.
 
 ## Features
 
@@ -45,8 +45,7 @@ bun run seed           # optional: (re)seed the knowledge base — the bundled
 bun run dev            # http://localhost:3000
 ```
 
-> The backend uses `z-ai-web-dev-sdk` (LLM, web search, page reader, image
-> generation) — it must run in a environment where that SDK is available.
+> The backend relies on an active Ollama instance for the LLM processing.
 
 ## Scripts
 
@@ -73,7 +72,7 @@ src/app/api/media/[name]    Local media serving (?download=1 for attachment)
 src/app/api/knowledge/*     KB stats + BM25 search (explorer)
 src/lib/research/pipeline   The 7-stage research pipeline
 src/lib/research/rag-engine BM25 retrieval, auto-learning, stats
-src/lib/research/llm        z-ai SDK wrapper (retries, JSON extraction)
+src/lib/research/llm        Ollama API wrapper (retries, JSON extraction)
 src/lib/research/search     Web search + page reading + context building
 src/lib/research/images     Image generation (content-filter ladder) + web
                             image mirroring
