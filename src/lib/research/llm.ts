@@ -25,7 +25,8 @@ export async function chatComplete(
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await fetch("http://127.0.0.1:11434/api/chat", {
+      const baseUrl = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
