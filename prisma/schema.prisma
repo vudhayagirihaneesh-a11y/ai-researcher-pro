@@ -14,9 +14,9 @@ model KnowledgeChunk {
   domain    String
   title     String
   content   String
-  keywords  String   @default("") // comma-separated
-  source    String   @default("") // provenance label
-  origin    String   @default("seed") // seed | web (auto-learned)
+  keywords  String   @default("")
+  source    String   @default("")
+  origin    String   @default("seed")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -27,10 +27,10 @@ model KnowledgeChunk {
 model ResearchSession {
   id          String        @id @default(cuid())
   topic       String
-  kind        String        @default("research") // research | chat
-  mode        String        @default("essay") // essay | photo-essay | chat
-  depth       String        @default("fast") // fast | medium | max (legacy: quick/standard/deep)
-  status      String        @default("running") // running | done | error
+  kind        String        @default("research")
+  mode        String        @default("essay")
+  depth       String        @default("fast")
+  status      String        @default("running")
   title       String?
   markdown    String?
   sourcesJson String?
@@ -41,14 +41,13 @@ model ResearchSession {
   error       String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-  images      EssayImage[]
   messages    ChatMessage[]
+  images      EssayImage[]
 }
 
 model EssayImage {
   id        String          @id @default(cuid())
   sessionId String
-  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   fileName  String
   url       String
   remoteUrl String?
@@ -57,6 +56,7 @@ model EssayImage {
   prompt    String?
   order     Int             @default(0)
   createdAt DateTime        @default(now())
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
 }
@@ -64,10 +64,10 @@ model EssayImage {
 model ChatMessage {
   id        String          @id @default(cuid())
   sessionId String
-  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   role      String
   content   String
   createdAt DateTime        @default(now())
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
 }
