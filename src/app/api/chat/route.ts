@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { runBroker } from "@/lib/research/broker";
 import { chatComplete, extractJson } from "@/lib/research/llm";
 import { searchKnowledge } from "@/lib/research/rag-engine";
+import { webSearch } from "@/lib/research/search";
 import {
   executePipeline,
   EventQueue,
@@ -22,7 +23,7 @@ export const maxDuration = 300;
 
 const ESSAY_CHAT_SYSTEM = `You are the research assistant of AI Researcher Pro. You answer questions about the user's completed research essay and its sources. Be substantive: give thorough, well-reasoned answers grounded in the essay, the sources, and the curated knowledge-base excerpts provided. Use markdown when helpful (headings, bold, lists). Cite web sources as [S1], [S2] and knowledge-base passages as [K1], [K2] when drawing on them. Never mention being an AI. Never give one-line answers to substantive questions — develop your reasoning.`;
 
-const QUICK_CHAT_SYSTEM = `You are AI Researcher Pro — a world-class research assistant with access to a curated knowledge base of hundreds of verified reference passages. Answer the user's message directly, substantively and helpfully. Use markdown when helpful. If the user seems to want a long-form essay or deep investigation, tell them they can simply ask for a research essay or photo essay and you will run a full deep-research pipeline. Cite knowledge-base passages as [K1], [K2] when drawing on them. Never mention being an AI.`;
+const QUICK_CHAT_SYSTEM = `You are AI Researcher Pro — a world-class research assistant with access to a curated knowledge base of hundreds of verified reference passages and a live real-time web search engine. Answer the user's message directly, substantively and helpfully. Use markdown when helpful. If the user seems to want a long-form essay or deep investigation, tell them they can simply ask for a research essay or photo essay and you will run a full deep-research pipeline. Cite knowledge-base passages as [K1], [K2] and real-time web search results as [W1], [W2] when drawing on them. Never mention being an AI.`;
 
 // ─── Intent classification ───────────────────────────────────────────────────
 
@@ -90,8 +91,22 @@ async function streamQuickReply(
     /* chat works fine without KB augmentation */
   }
 
+  let webBlock = "";
+  try {
+    const webHits = await webSearch(opts.message, 3);
+    if (webHits.length > 0) {
+      webBlock =
+        `\n\nREAL-TIME WEB SEARCH (cite as [W1], [W2] when used):\n` +
+        webHits
+          .map((h, i) => `W${i + 1}: ${h.name} - ${h.snippet}`)
+          .join("\n\n");
+    }
+  } catch {
+    /* ignore search errors */
+  }
+
   const messages = [
-    { role: "system" as const, content: opts.systemPrompt + kbBlock },
+    { role: "system" as const, content: opts.systemPrompt + kbBlock + webBlock },
     ...opts.history.slice(-6).map((h) => ({
       role: h.role as "user" | "assistant",
       content: h.content.slice(0, 4000),
