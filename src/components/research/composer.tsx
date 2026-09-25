@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Square, Paperclip, Loader2 } from "lucide-react";
+import { Send, Square, Paperclip, Loader2, X, FileText } from "lucide-react";
 import type { SpeedMode } from "@/lib/types";
 import { SPEED_PRESETS } from "@/lib/types";
 import { ModeSelector } from "@/components/research/mode-selector";
 import { cn } from "@/lib/utils";
+
+interface Attachment {
+  id: string;
+  name: string;
+  text: string;
+  type: string;
+  thumbnailUrl?: string;
+}
 
 export function Composer({
   value,
@@ -19,7 +27,7 @@ export function Composer({
 }: {
   value: string;
   onChange: (v: string) => void;
-  onSend: () => void;
+  onSend: (text?: string) => void;
   onStop: () => void;
   running: boolean;
   speed: SpeedMode;
@@ -29,6 +37,7 @@ export function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   // Auto-resize the textarea up to a cap.
   useEffect(() => {
@@ -38,12 +47,24 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 208)}px`;
   }, [value]);
 
-  const canSend = value.trim().length > 0 && !running && !disabled;
+  const canSend = (value.trim().length > 0 || attachments.length > 0) && !running && !disabled;
+
+  const handleSend = () => {
+    if (!canSend) return;
+    let finalValue = value;
+    if (attachments.length > 0) {
+      const prefix = attachments.map(a => `[Attached File: ${a.name}]\n${a.text.trim()}\n\n`).join("");
+      finalValue = prefix + value;
+      setAttachments([]);
+    }
+    onChange(""); 
+    onSend(finalValue);
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (canSend) onSend();
+      handleSend();
     }
   };
 
@@ -75,8 +96,16 @@ export function Composer({
         throw new Error(errMsg);
       }
       const data = await res.json();
-      const prefix = `[Attached File: ${file.name}]\n${data.text.trim()}\n\n`;
-      onChange(prefix + value);
+      
+      const newAtt: Attachment = {
+        id: Math.random().toString(36).slice(2),
+        name: file.name,
+        text: data.text,
+        type: file.type,
+        thumbnailUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined
+      };
+      
+      setAttachments(prev => [...prev, newAtt]);
     } catch (err: any) {
       alert(err.message || "An error occurred");
     } finally {
@@ -91,6 +120,30 @@ export function Composer({
     <div className="border-t border-gray-200/80 bg-white/80 backdrop-blur-md pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 dark:border-stone-800 dark:bg-stone-950/80">
       <div className="mx-auto w-full max-w-3xl px-4">
         <div className="rounded-2xl border border-gray-300 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-600/15 dark:border-stone-700 dark:bg-stone-900 dark:focus-within:border-blue-500">
+          
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-4 px-4 pt-4 pb-1">
+              {attachments.map(att => (
+                <div key={att.id} className="group relative flex size-[72px] shrink-0 items-center justify-center">
+                  <div className="flex size-full items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-stone-700 dark:bg-stone-800">
+                    {att.thumbnailUrl ? (
+                      <img src={att.thumbnailUrl} alt={att.name} className="size-full object-cover" />
+                    ) : (
+                      <FileText className="size-7 text-gray-400 dark:text-stone-500" />
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setAttachments(prev => prev.filter(a => a.id !== att.id))}
+                    className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-gray-900 text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:scale-110 hover:bg-gray-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+                    title="Remove attachment"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <label htmlFor="chat-input" className="sr-only">
             Ask anything
           </label>
@@ -102,7 +155,7 @@ export function Composer({
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything…"
+            placeholder={attachments.length > 0 ? "Ask a question about your files..." : "Ask anything…"}
             className="max-h-52 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[16px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-60 dark:text-stone-100 dark:placeholder:text-stone-500"
           />
           <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
@@ -118,7 +171,7 @@ export function Composer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled || isUploading || running}
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 transition-colors dark:hover:bg-stone-800 dark:hover:text-stone-300"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-stone-800 dark:hover:text-stone-300"
                 aria-label="Upload File"
               >
                 {isUploading ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
@@ -140,7 +193,7 @@ export function Composer({
             ) : (
               <button
                 type="button"
-                onClick={onSend}
+                onClick={handleSend}
                 disabled={!canSend}
                 className={cn(
                   "inline-flex size-10 shrink-0 items-center justify-center rounded-xl transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",

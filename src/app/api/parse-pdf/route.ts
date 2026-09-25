@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
     let text = "";
 
     if (type === "application/pdf") {
-      // @ts-expect-error - Turbopack pdf-parse workaround
       const pdf = require("pdf-parse");
       const buffer = await file.arrayBuffer();
       const data = await pdf(Buffer.from(buffer));

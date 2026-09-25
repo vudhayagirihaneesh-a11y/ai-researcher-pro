@@ -893,7 +893,7 @@ export default function Home() {
         <Composer
           value={input}
           onChange={setInput}
-          onSend={() => void sendMessage()}
+          onSend={(override) => void sendMessage(override)}
           onStop={stopStreaming}
           running={streaming}
           speed={speed}
