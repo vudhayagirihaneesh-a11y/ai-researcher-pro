@@ -255,6 +255,7 @@ export default function Home() {
             currentStage: ev.stage,
             completedStages: STAGES.slice(0, Math.max(idx, 0)),
             stageMessages: { ...run.stageMessages, [ev.stage]: ev.message },
+            imageProgress: ev.stage !== "images" ? null : run.imageProgress,
           }));
           pushLog(localStreamId, `── ${ev.message}`);
           break;
