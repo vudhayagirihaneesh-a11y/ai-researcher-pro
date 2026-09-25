@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
       const buffer = await file.arrayBuffer();
       const data = await pdf(Buffer.from(buffer));
       text = data.text;
-    } else if (type === "text/plain") {
+    } else if (type.startsWith("text/")) {
       text = await file.text();
     } else if (type.startsWith("image/")) {
       const Tesseract = require("tesseract.js");
