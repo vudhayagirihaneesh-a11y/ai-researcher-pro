@@ -12,6 +12,7 @@ export async function chatComplete(
     temperature?: number;
     minChars?: number;
     retries?: number;
+    onChunk?: (text: string) => void;
   } = {}
 ): Promise<string> {
   const {
@@ -19,6 +20,7 @@ export async function chatComplete(
     temperature = 0.6,
     minChars = 1,
     retries = 3,
+    onChunk,
   } = opts;
 
   let lastError: Error | null = null;
@@ -67,7 +69,9 @@ export async function chatComplete(
           try {
             const parsed = JSON.parse(line);
             if (parsed.message?.content) {
-              fullText += parsed.message.content;
+              const chunk = parsed.message.content;
+              fullText += chunk;
+              if (onChunk) onChunk(chunk);
             }
           } catch {
             // ignore malformed lines

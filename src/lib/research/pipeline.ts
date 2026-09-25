@@ -286,6 +286,7 @@ async function writeSection(args: {
   photoPlan?: ImagePlanItem;
   priorHeadings: string[];
   isFinal: boolean;
+  q: EventQueue;
 }): Promise<string> {
   const {
     heading,
@@ -299,6 +300,7 @@ async function writeSection(args: {
     photoPlan,
     priorHeadings,
     isFinal,
+    q,
   } = args;
 
   const hint = constitutionHint(req.topic, req.notes);
@@ -335,7 +337,11 @@ Output ONLY this section's markdown.`;
       { role: "system", content: WRITER_SYSTEM },
       { role: "user", content: prompt },
     ],
-    { maxTokens: 3400, temperature: 0.65, minChars: 300 }
+    { maxTokens: 3400, temperature: 0.65, minChars: 300, onChunk: (text) => {
+      // Stream tokens live! Strip any raw placeholder text
+      const clean = text.replace(/\{\{PHOTO_\d+\}\}/g, "");
+      if (clean) q.push({ type: "content", text: clean });
+    } }
   );
 
   if (countWords(first) >= targetWords * 0.6) return first;
@@ -354,7 +360,10 @@ Output ONLY this section's markdown.`;
         content: `Your attempt was only ${countWords(first)} words, which is outside the required range of ${Math.round(targetWords * 0.9)} to ${Math.round(targetWords * 1.2)} words. Rewrite the FULL section to be approximately ${targetWords} words with appropriate depth, detail and analysis. Same rules as before.`,
       },
     ],
-    { maxTokens: 3800, temperature: 0.7, minChars: 400 }
+    { maxTokens: 3800, temperature: 0.7, minChars: 400, onChunk: (text) => {
+      const clean = text.replace(/\{\{PHOTO_\d+\}\}/g, "");
+      if (clean) q.push({ type: "content", text: clean });
+    } }
   );
   return countWords(retry) > countWords(first) ? retry : first;
 }
@@ -839,13 +848,12 @@ export async function executePipeline(
         photoPlan: photoPlanItem,
         priorHeadings: [...priorHeadings],
         isFinal: i === plan.outline.length - 1,
+        q,
       });
       const words = countWords(md);
       sections.push({ heading: sec.heading, markdown: md, words, target: sec.targetWords });
       priorHeadings.push(sec.heading);
-      // stream a clean copy (tokens stripped — images get embedded at finalize)
-      const streamCopy = md.replace(/\{\{PHOTO_\d+\}\}\s*/g, "").replace(/\n{3,}/g, "\n\n");
-      q.push({ type: "content", text: streamCopy + "\n\n" });
+      q.push({ type: "content", text: "\n\n" });
       q.push({ type: "section_done", heading: sec.heading, words });
       q.push({
         type: "stats",
