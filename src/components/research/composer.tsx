@@ -51,7 +51,7 @@ export function Composer({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert("PDF exceeds 5MB limit.");
+      alert("File exceeds 5MB limit.");
       return;
     }
 
@@ -68,7 +68,7 @@ export function Composer({
         throw new Error(err.error || "Upload failed");
       }
       const data = await res.json();
-      const prefix = `[Attached PDF: ${file.name}]\n${data.text.trim()}\n\n`;
+      const prefix = `[Attached File: ${file.name}]\n${data.text.trim()}\n\n`;
       onChange(prefix + value);
     } catch (err: any) {
       alert(err.message);
@@ -102,7 +102,7 @@ export function Composer({
             <div className="flex min-w-0 items-center gap-2">
               <input 
                 type="file" 
-                accept="application/pdf" 
+                accept="application/pdf,image/png,image/jpeg,image/webp,text/plain" 
                 className="hidden" 
                 ref={fileInputRef} 
                 onChange={handleFileUpload} 
@@ -112,7 +112,7 @@ export function Composer({
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled || isUploading || running}
                 className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 transition-colors dark:hover:bg-stone-800 dark:hover:text-stone-300"
-                aria-label="Upload PDF"
+                aria-label="Upload File"
               >
                 {isUploading ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
               </button>

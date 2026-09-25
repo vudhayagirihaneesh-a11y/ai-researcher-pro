@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+
 export async function POST(req: NextRequest) {
   try {
-    // @ts-expect-error - Turbopack pdf-parse workaround
-    const pdf = require("pdf-parse");
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -17,13 +16,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const buffer = await file.arrayBuffer();
-    const data = await pdf(Buffer.from(buffer));
+    const type = file.type || "";
+    let text = "";
 
-    return NextResponse.json({ text: data.text });
+    if (type === "application/pdf") {
+      // @ts-expect-error - Turbopack pdf-parse workaround
+      const pdf = require("pdf-parse");
+      const buffer = await file.arrayBuffer();
+      const data = await pdf(Buffer.from(buffer));
+      text = data.text;
+    } else if (type === "text/plain") {
+      text = await file.text();
+    } else if (type.startsWith("image/")) {
+      const Tesseract = require("tesseract.js");
+      const buffer = await file.arrayBuffer();
+      const { data } = await Tesseract.recognize(Buffer.from(buffer), "eng");
+      text = data.text;
+    } else {
+      return NextResponse.json(
+        { error: "Unsupported file type. Only PDF, TXT, and Images (PNG/JPG) are supported." },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ text });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to parse PDF" },
+      { error: err.message || "Failed to parse file" },
       { status: 500 }
     );
   }
