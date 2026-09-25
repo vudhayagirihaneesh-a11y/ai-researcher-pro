@@ -64,14 +64,21 @@ export function Composer({
         body: formData,
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Upload failed");
+        let errMsg = "Upload failed";
+        try {
+          const err = await res.json();
+          errMsg = err.error || errMsg;
+        } catch {
+          if (res.status === 504) errMsg = "Upload timed out (OCR takes a long time on the first run). Please try again.";
+          else errMsg = `Server error: ${res.status}`;
+        }
+        throw new Error(errMsg);
       }
       const data = await res.json();
       const prefix = `[Attached File: ${file.name}]\n${data.text.trim()}\n\n`;
       onChange(prefix + value);
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || "An error occurred");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

@@ -29,8 +29,12 @@ export async function POST(req: NextRequest) {
       text = await file.text();
     } else if (type.startsWith("image/")) {
       const Tesseract = require("tesseract.js");
+      const os = require("os");
       const buffer = await file.arrayBuffer();
-      const { data } = await Tesseract.recognize(Buffer.from(buffer), "eng");
+      const { data } = await Tesseract.recognize(Buffer.from(buffer), "eng", {
+        cachePath: os.tmpdir(),
+        cacheMethod: "write",
+      });
       text = data.text;
     } else {
       return NextResponse.json(
