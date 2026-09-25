@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-// @ts-expect-error - pdf-parse has no default export in its types but exports a function
-import pdf from "pdf-parse";
-
 export async function POST(req: NextRequest) {
   try {
+    // @ts-expect-error - Turbopack pdf-parse workaround
+    const pdf = require("pdf-parse");
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
