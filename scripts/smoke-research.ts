@@ -1,3 +1,4 @@
+export {};  
 // Smoke test: run a small research pipeline through the API and watch SSE events.
 const BASE = "http://localhost:3000";
 

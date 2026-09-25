@@ -1,97 +1,106 @@
 # AI Researcher Pro
 
-A RAG-grounded deep-research chat app: ask anything — quick questions get
-instant knowledge-base-grounded answers, and research requests run a full
-deep-research pipeline (plan → knowledge retrieval → web search → page
-reading → images → section-by-section writing with length enforcement →
-finalized essay with references).
+A powerful, RAG-grounded deep-research application built for intense, comprehensive exploration of any topic. 
 
-Built with **Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 ·
-shadcn/ui · Prisma**.
+**AI Researcher Pro** is not just a chatbot—it is an autonomous agent that runs a full deep-research pipeline for your queries. It plans research, retrieves local knowledge base facts, executes web searches, reads webpages, generates/mirrors imagery, and iteratively writes a comprehensive, cited, long-form essay.
 
-## Features
+Built with **Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · shadcn/ui · Prisma · PostgreSQL (Supabase)**.
 
-- **Chat interface** — sidebar with history, "+ New chat", connected status,
-  light/dark theme, chat bubbles with timestamps.
-- **Three research modes** — *Fast* (up to 20k words · 10 photos),
-  *Medium* (up to 50k words · 20 photos), *Max* (up to 100k words · 30
-  photos). Caps are enforced in the pipeline.
-- **Intent routing** — the server classifies each new message: quick chat
-  (KB-grounded reply) vs deep research (full pipeline with essay, photos,
-  sources).
-- **Curated RAG knowledge base** — 450+ hand-written reference passages
-  across 48 domains (Indian constitution, history, science, economics,
-  world affairs …) retrieved via a BM25 engine with synonym expansion and
-  domain diversity.
-- **Auto-learning corpus** — researched web pages are distilled into new
-  knowledge passages on every run.
-- **Real research** — multi-query web search, page reading, inline [S#]
-  citations plus [K#] knowledge-base citations.
-- **Downloadable imagery** — AI-generated documentary photos (photo-essay
-  mode) or real web photos mirrored locally (essay mode); per-image
-  downloads, ZIP of all photos, standalone HTML export with embedded
-  images, Markdown export.
-- **Detached runs** — closing the tab or pressing Stop doesn't kill the
-  research; the pipeline keeps running server-side and the finished essay
-  appears in History.
+---
 
-## Setup
+## 🌟 Key Features
+
+- **🧠 Dual Intent Engine**
+  The server intelligently routes your prompt: quick questions get instant, KB-grounded conversational replies, while complex requests trigger the full deep-research pipeline.
+
+- **📚 Deep Research Pipeline**
+  - **Plan**: Strategizes an outline, sets word limits, and prepares multi-query web searches.
+  - **Knowledge**: Connects to a curated RAG engine (450+ hand-written passages across 48 domains) via BM25 retrieval.
+  - **Search & Read**: Executes searches, visits pages, and distills web content.
+  - **Write**: Systematically writes section-by-section with strict length enforcement (using context windows efficiently).
+  - **Cite**: Generates inline citations for both web sources `[S#]` and verified knowledge `[K#]`.
+
+- **📏 Flexible Research Modes**
+  - **Fast**: Up to 20,000 words, 10 photos.
+  - **Medium**: Up to 50,000 words, 20 photos.
+  - **Max**: Up to 100,000 words, 30 photos.
+  - *Note: You can override these limits by explicitly specifying a word/line count in your prompt (e.g., "write 500 lines").*
+
+- **📸 Photo-Essay & Imagery**
+  Requests a photo-essay? The AI generates a structured narrative arc interweaved with photorealistic AI-generated documentary photos. Requests a standard essay? It finds and mirrors real photographs from the web (Wikimedia Commons, DuckDuckGo) to illustrate the piece.
+
+- **📄 PDF Context Upload**
+  Upload a PDF (up to 5MB) directly in the chat! The system parses the document and attaches the extracted text to your prompt, allowing you to run deep research against your own private documents.
+
+- **📦 Export & Portability**
+  Download your finalized research as a bundled `.zip` archive (containing index.html, markdown, and all images), or export directly to Markdown.
+
+- **⚡ Background Execution (Detached Runs)**
+  Don't want to wait? Start a research query and close the tab. The server-side pipeline continues autonomously. Come back later and find the finished essay in your History.
+
+---
+
+## 🛠️ Stack & Architecture
+
+- **Frontend**: React 19, Next.js App Router, TailwindCSS v4, shadcn/ui, Framer Motion.
+- **Backend**: Next.js Serverless Functions, Prisma ORM, PostgreSQL (via Supabase).
+- **LLM Engine**: Ollama (Local) for secure, free, uncensored intelligence, exposed via Ngrok for serverless communication.
+- **Parsing**: Native PDF-parse integration.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- [Node.js](https://nodejs.org/) (v18+)
+- [Ollama](https://ollama.ai/) running locally with a model (e.g., `qwen3:8b` or `llama3`).
+- A PostgreSQL database (e.g., Supabase).
+
+### 2. Installation
 
 ```bash
-bun install            # or npm install
-bun run db:push        # create the SQLite schema (db/custom.db)
-bun run seed           # optional: (re)seed the knowledge base — the bundled
-                       # db/custom.db already contains 450+ passages
-bun run dev            # http://localhost:3000
+# Install dependencies
+npm install
+
+# Push the database schema
+npx prisma db push
 ```
 
-> The backend relies on an active Ollama instance for the LLM processing.
+### 3. Environment Variables
+Create a `.env` file in the root directory:
+```env
+# Your PostgreSQL connection string
+DATABASE_URL="postgresql://user:password@aws-0-region.pooler.supabase.com:6543/postgres"
 
-## Scripts
-
-| Script | Purpose |
-| --- | --- |
-| `bun run dev` | Start the Next.js dev server |
-| `bun run db:push` | Push the Prisma schema to SQLite |
-| `bun run seed` | Seed the knowledge base from `src/data/kb/*` + corpus seeds |
-| `bun scripts/smoke-research.ts [essay\|photo-essay]` | Run a research pipeline end-to-end via the API |
-
-## Project layout
-
-```
-prisma/schema.prisma        ResearchSession (kind: research|chat) · EssayImage ·
-                            ChatMessage · KnowledgeChunk
-src/app/page.tsx            Chat UI orchestrator (client)
-src/app/api/chat            Unified SSE endpoint: intent classification →
-                            quick reply OR deep-research pipeline
-src/app/api/research        Direct SSE research endpoint (same pipeline)
-src/app/api/sessions        History list/detail/delete
-src/app/api/export          Markdown / standalone-HTML essay export
-src/app/api/download-zip    ZIP export (essay.md + photos + index.html)
-src/app/api/media/[name]    Local media serving (?download=1 for attachment)
-src/app/api/knowledge/*     KB stats + BM25 search (explorer)
-src/lib/research/pipeline   The 7-stage research pipeline
-src/lib/research/rag-engine BM25 retrieval, auto-learning, stats
-src/lib/research/llm        Ollama API wrapper (retries, JSON extraction)
-src/lib/research/search     Web search + page reading + context building
-src/lib/research/images     Image generation (content-filter ladder) + web
-                            image mirroring
-src/lib/types.ts            Shared contract: SPEED_PRESETS (fast/medium/max
-                            caps), SSE events, DTOs
-src/data/kb/*               291 hand-curated knowledge entries (452 passages
-                            after seed parse)
-src/components/research/*   Chat UI components (sidebar, composer with mode
-                            selector, message bubbles, research block,
-                            essay view, photo gallery, sources, KB explorer)
+# Your Ngrok URL pointing to local Ollama (e.g. http://localhost:11434)
+OLLAMA_URL="https://your-ngrok-url.ngrok-free.dev"
 ```
 
-## Research modes
+### 4. Seed the Knowledge Base (Optional)
+AI Researcher Pro comes with 450+ curated passages.
+```bash
+npx tsx scripts/seed-knowledge.ts
+```
 
-| Mode | Word cap | Photo cap | Sections | Search queries | KB passages |
-| --- | --- | --- | --- | --- | --- |
-| Fast | 20,000 | 10 | 8–12 | 4 | 8 |
-| Medium | 50,000 | 20 | 14–20 | 6 | 12 |
-| Max | 100,000 | 30 | 24–32 | 8 | 16 |
+### 5. Start the Development Server
+```bash
+npm run dev
+```
+Visit `http://localhost:3000` to start researching.
 
-Photo-essay requests use the full photo cap (one frame per photo section);
-plain essays gather fewer illustrative images.
+---
+
+## 📁 Project Structure
+
+```text
+prisma/schema.prisma        Database models (Session, Image, Message, Knowledge)
+src/app/page.tsx            Client UI orchestrator and chat interface
+src/app/api/chat            SSE endpoint: Intent routing & pipeline entry
+src/app/api/parse-pdf       Handles document uploads (up to 5MB limit)
+src/app/api/export          Markdown / HTML bundle export logic
+src/lib/research/pipeline   The 7-stage research orchestration engine
+src/lib/research/rag-engine BM25 text retrieval and auto-learning mechanisms
+src/lib/research/llm        Ollama fetch wrapper with error resilience & JSON parsing
+src/lib/research/search     Web scraping and multi-query search algorithms
+src/lib/research/images     AI image generation & web image mirroring
+```

@@ -67,7 +67,7 @@ async function searchCommonsApi(
           source: "Wikimedia Commons",
         };
       })
-      .filter((r): r is ImageSearchResult => !!r);
+      .filter(Boolean) as ImageSearchResult[];
   } catch {
     return [];
   }

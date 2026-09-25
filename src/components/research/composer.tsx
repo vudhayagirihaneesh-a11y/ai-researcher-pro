@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Send, Square } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Square, Paperclip, Loader2 } from "lucide-react";
 import type { SpeedMode } from "@/lib/types";
 import { SPEED_PRESETS } from "@/lib/types";
 import { ModeSelector } from "@/components/research/mode-selector";
@@ -27,6 +27,8 @@ export function Composer({
   disabled?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Auto-resize the textarea up to a cap.
   useEffect(() => {
@@ -42,6 +44,37 @@ export function Composer({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (canSend) onSend();
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("PDF exceeds 5MB limit.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/parse-pdf", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Upload failed");
+      }
+      const data = await res.json();
+      const prefix = `[Attached PDF: ${file.name}]\n${data.text.trim()}\n\n`;
+      onChange(prefix + value);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -67,6 +100,22 @@ export function Composer({
           />
           <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
             <div className="flex min-w-0 items-center gap-2">
+              <input 
+                type="file" 
+                accept="application/pdf" 
+                className="hidden" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || isUploading || running}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 transition-colors dark:hover:bg-stone-800 dark:hover:text-stone-300"
+                aria-label="Upload PDF"
+              >
+                {isUploading ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
+              </button>
               <ModeSelector value={speed} onChange={onSpeedChange} />
               <span className="hidden truncate text-xs text-gray-400 sm:block dark:text-stone-500">
                 {preset.tagline}

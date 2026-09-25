@@ -44,7 +44,7 @@ export async function chatComplete(
       });
 
       if (!response.ok) {
-        throw new Error(`Ollama HTTP error ${response.status}`);
+        throw new Error(`AI Server connection issue (HTTP ${response.status}). Please ensure the background server is running.`);
       }
 
       if (!response.body) throw new Error("No response body");
@@ -109,7 +109,7 @@ export async function chatComplete(
       await new Promise((r) => setTimeout(r, 1200 * attempt));
     }
   }
-  throw new Error(`LLM completion failed after ${retries} attempts: ${lastError?.message}`);
+  throw new Error(`AI generation failed after ${retries} attempts: ${lastError?.message}`);
 }
 
 /** Extract the first JSON object from an LLM response (handles code fences,

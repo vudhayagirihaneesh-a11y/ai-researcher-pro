@@ -98,6 +98,20 @@ async function planResearch(req: ResearchRequest): Promise<ResearchPlan> {
   const photoCount = requestedPhotos 
     ? Math.max(1, Math.min(requestedPhotos, maxAllowed)) 
     : maxAllowed;
+
+  // Extract custom word or line count
+  let targetWords = preset.targetWords;
+  let maxWords = preset.maxWords;
+  let sections = preset.sections;
+  const lengthMatch = fullText.match(/\b(\d+)\s*(word|line)s?\b/);
+  if (lengthMatch) {
+    const amount = parseInt(lengthMatch[1], 10);
+    const multiplier = lengthMatch[2] === "line" ? 10 : 1;
+    targetWords = Math.max(300, Math.min(amount * multiplier, 100000));
+    maxWords = Math.max(maxWords, targetWords * 1.5);
+    const idealSections = Math.max(2, Math.round(targetWords / 800));
+    sections = [Math.max(2, idealSections - 1), idealSections + 2];
+  }
   const hint = constitutionHint(req.topic, req.notes);
 
   const photoInstructions = isPhotoEssay
@@ -106,7 +120,7 @@ async function planResearch(req: ResearchRequest): Promise<ResearchPlan> {
        2. Then ${photoCount} photo sections, one per photograph. Each ~150 words. Heading format: "Frame {i} — {evocative four-to-six word title}". The brief for each describes the moment that photograph captures; together they must form a chronological narrative arc (build-up → march → confrontation/turning point → aftermath → resolution).
        3. One closing reflection section (~200 words).
      "image_plan" — exactly ${photoCount} entries matching photo sections 1..N in order. Each "prompt" is a 35–60 word photorealistic documentary photograph description: scene, location, subjects, action, weather/light, mood, composition (e.g. wide shot, close-up, over-the-shoulder). Depict Delhi recognizably where fitting (Jantar Mantar, India Gate, Connaught Place, university gates, Raisina Hill in the distance). Placard text (if any) must be short and legible. No celebrities, no real politicians, no gore, no violence beyond tense standoffs.`
-    : `"outline" — between ${preset.sections[0]} and ${preset.sections[1]} logical sections that build a complete, in-depth essay (introduction, themed body sections, analysis, conclusion). Distribute the word budget across sections — each section should target roughly ${Math.round(preset.targetWords / ((preset.sections[0] + preset.sections[1]) / 2))} words.
+    : `"outline" — between ${sections[0]} and ${sections[1]} logical sections that build a complete, in-depth essay (introduction, themed body sections, analysis, conclusion). Distribute the word budget across sections — each section should target roughly ${Math.round(targetWords / ((sections[0] + sections[1]) / 2))} words.
      "image_plan" — a single search query phrase describing the kind of real photograph that would illustrate this essay well.`;
 
   const raw = await chatComplete(
@@ -122,7 +136,7 @@ async function planResearch(req: ResearchRequest): Promise<ResearchPlan> {
 
 TOPIC: ${req.topic}
 ${req.notes ? `USER ENRICHMENT NOTES: ${req.notes}` : ""}
-TARGET LENGTH: about ${preset.targetWords.toLocaleString()} words total (hard ceiling: ${preset.maxWords.toLocaleString()} words).
+TARGET LENGTH: about ${targetWords.toLocaleString()} words total (hard ceiling: ${maxWords.toLocaleString()} words).
 ${hint}
 
 Return JSON with exactly these keys:
@@ -136,7 +150,7 @@ Return JSON with exactly these keys:
 Where:
 ${photoInstructions}
 
-Distribute target_words so they sum to roughly ${preset.targetWords.toLocaleString()}. Reply with JSON ONLY.`,
+Distribute target_words so they sum to roughly ${targetWords.toLocaleString()}. Reply with JSON ONLY.`,
       },
     ],
     { maxTokens: 3000, temperature: 0.4, minChars: 200 }
@@ -147,7 +161,7 @@ Distribute target_words so they sum to roughly ${preset.targetWords.toLocaleStri
     const fallbackOutline: OutlineSection[] = [
       {
         heading: "The Gathering Storm",
-        targetWords: Math.round(preset.targetWords * 0.12),
+        targetWords: Math.round(targetWords * 0.12),
         brief: `Opening context: what sparked "${req.topic}", who is involved, stakes.`,
       },
     ];
@@ -155,32 +169,32 @@ Distribute target_words so they sum to roughly ${preset.targetWords.toLocaleStri
       for (let i = 1; i <= n; i++) {
         fallbackOutline.push({
           heading: `Frame ${i} — Scene ${i}`,
-          targetWords: Math.round((preset.targetWords * 0.62) / n),
+          targetWords: Math.round((targetWords * 0.62) / n),
           brief: `Photograph ${i} of the narrative arc of ${req.topic}.`,
         });
       }
       fallbackOutline.push({
         heading: "The Constitutional Lens",
-        targetWords: Math.round(preset.targetWords * 0.15),
+        targetWords: Math.round(targetWords * 0.15),
         brief:
           "Legal and constitutional analysis of the events through the Articles of the Constitution of India.",
       });
     } else {
       const bodySections = Math.max(
         3,
-        Math.min(preset.sections[1] - 2, Math.round(preset.targetWords / 900))
+        Math.min(sections[1] - 2, Math.round(targetWords / 900))
       );
       for (let i = 1; i <= bodySections; i++) {
         fallbackOutline.push({
           heading: `Chapter ${i} — Dimension ${i}`,
-          targetWords: Math.round((preset.targetWords * 0.72) / bodySections),
+          targetWords: Math.round((targetWords * 0.72) / bodySections),
           brief: `Themed body section ${i} of ${req.topic}: background, developments, analysis.`,
         });
       }
     }
     fallbackOutline.push({
       heading: "What Remains",
-      targetWords: Math.round(preset.targetWords * 0.11),
+      targetWords: Math.round(targetWords * 0.11),
       brief: "Closing reflection on meaning and aftermath.",
     });
     return fallbackOutline;
@@ -309,7 +323,7 @@ ${context ? `WEB RESEARCH MATERIAL (cite inline as [S1], [S2] where used):\n${co
 ${priorHeadings.length ? `SECTIONS ALREADY WRITTEN (do not repeat them): ${priorHeadings.join("; ")}` : ""}
 
 REQUIREMENTS:
-- Write ${targetWords}+ words. This is a hard minimum — under-writing is a failure.
+- Write approximately ${targetWords} words (between ${Math.round(targetWords * 0.9)} and ${Math.round(targetWords * 1.2)} words). This is a strict length requirement — do not write significantly more or less.
 - Begin with the markdown heading line "## ${heading}".
 - Flowing prose paragraphs only (no bullet lists, no tables).
 - ${isFinal ? "This is the closing section — end with resonance, not a summary label." : "Do not conclude the essay in this section."}
@@ -337,7 +351,7 @@ Output ONLY this section's markdown.`;
       },
       {
         role: "user",
-        content: `Your attempt was only ${countWords(first)} words — far below the required ${targetWords}. Rewrite the FULL section at ${targetWords}+ words with more depth, detail and analysis. Same rules as before.`,
+        content: `Your attempt was only ${countWords(first)} words, which is outside the required range of ${Math.round(targetWords * 0.9)} to ${Math.round(targetWords * 1.2)} words. Rewrite the FULL section to be approximately ${targetWords} words with appropriate depth, detail and analysis. Same rules as before.`,
       },
     ],
     { maxTokens: 3800, temperature: 0.7, minChars: 400 }

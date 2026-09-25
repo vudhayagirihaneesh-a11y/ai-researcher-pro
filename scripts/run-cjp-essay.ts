@@ -1,3 +1,4 @@
+export {};  
 // Full CJP photo essay run — the user's requested deliverable.
 // 12 photos (>10 required), ~2400 words, constitutional enrichment.
 const BASE = "http://localhost:3000";

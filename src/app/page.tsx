@@ -489,8 +489,8 @@ export default function Home() {
       // Starting a new topic inside an old conversation: keep the session
       // only if it exists — the server handles research/chat accordingly.
 
+      let targetStreamId = localStreamId;
       try {
-        let targetStreamId = localStreamId;
         await streamSSE(
           "/api/chat",
           {
